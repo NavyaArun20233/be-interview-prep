@@ -46,7 +46,7 @@ validation failures add an `errors: [{field, message}]` array.
 | `DELETE` | `/api/v1/tasks/{id}`  | Delete a task → `204`                                          |
 
 Fields: `title` (required, ≤ 100 chars), `description` (≤ 1000 chars), `status`
-(defaults to `TODO` on create), `dueDate` (`yyyy-MM-dd`, today or later); `id`,
+(defaults to `TODO` on create), `dueDate` (`yyyy-MM-dd`, today or later in India time, Asia/Kolkata); `id`,
 `createdAt` and `updatedAt` are set by the server.
 
 ```sh

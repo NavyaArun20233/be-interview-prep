@@ -65,8 +65,7 @@ class TaskServiceTest {
     void createKeepsExplicitStatus() {
         when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        TaskResponse response =
-                taskService.create(new CreateTaskRequest("Ship it", null, TaskStatus.IN_PROGRESS, null));
+        TaskResponse response = taskService.create(new CreateTaskRequest("Ship it", null, "IN_PROGRESS", null));
 
         assertThat(response.status()).isEqualTo(TaskStatus.IN_PROGRESS);
     }
@@ -88,7 +87,7 @@ class TaskServiceTest {
         when(taskRepository.saveAndFlush(existing)).thenReturn(existing);
 
         TaskResponse response =
-                taskService.update(7L, new UpdateTaskRequest("New", null, TaskStatus.DONE, TOMORROW.plusDays(1)));
+                taskService.update(7L, new UpdateTaskRequest("New", null, "DONE", TOMORROW.plusDays(1)));
 
         assertThat(response.title()).isEqualTo("New");
         assertThat(response.description()).isNull();
@@ -102,7 +101,7 @@ class TaskServiceTest {
     void updateThrowsWhenTaskDoesNotExist() {
         when(taskRepository.findById(7L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> taskService.update(7L, new UpdateTaskRequest("New", null, TaskStatus.DONE, null)))
+        assertThatThrownBy(() -> taskService.update(7L, new UpdateTaskRequest("New", null, "DONE", null)))
                 .isInstanceOf(TaskNotFoundException.class);
         verify(taskRepository, never()).saveAndFlush(any());
     }

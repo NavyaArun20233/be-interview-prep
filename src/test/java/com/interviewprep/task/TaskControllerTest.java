@@ -142,6 +142,36 @@ class TaskControllerTest {
     }
 
     @Test
+    void createReportsUnknownStatusTogetherWithOtherFieldErrors() throws Exception {
+        mockMvc.perform(post("/api/v1/tasks")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title": " ", "status": "DOING", "dueDate": "%s"}
+                                """.formatted(TODAY.minusDays(1))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.length()").value(3))
+                .andExpect(jsonPath("$.errors[?(@.field == 'title')].message").value("must not be blank"))
+                .andExpect(jsonPath("$.errors[?(@.field == 'status')].message")
+                        .value("must be one of: TODO, IN_PROGRESS, DONE"))
+                .andExpect(jsonPath("$.errors[?(@.field == 'dueDate')].message")
+                        .value("must be a date in the present or in the future"));
+        verifyNoInteractions(taskService);
+    }
+
+    @Test
+    void updateRejectsUnknownStatus() throws Exception {
+        mockMvc.perform(put("/api/v1/tasks/5")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title": "Task", "status": "FINISHED"}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("status"))
+                .andExpect(jsonPath("$.errors[0].message").value("must be one of: TODO, IN_PROGRESS, DONE"));
+        verifyNoInteractions(taskService);
+    }
+
+    @Test
     void createRejectsInvalidDateFormat() throws Exception {
         mockMvc.perform(post("/api/v1/tasks")
                         .contentType(MediaType.APPLICATION_JSON)

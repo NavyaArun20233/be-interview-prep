@@ -1,5 +1,6 @@
 package com.interviewprep.task.dto;
 
+import com.interviewprep.common.validation.ValueOfEnum;
 import com.interviewprep.task.TaskStatus;
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotBlank;
@@ -10,5 +11,11 @@ import java.time.LocalDate;
 public record CreateTaskRequest(
         @NotBlank @Size(max = 100) String title,
         @Size(max = 1000) String description,
-        TaskStatus status,
-        @FutureOrPresent LocalDate dueDate) {}
+        @ValueOfEnum(enumClass = TaskStatus.class) String status,
+        @FutureOrPresent LocalDate dueDate) {
+
+    /** The validated {@code status}, or {@code null} when omitted. Call only after validation. */
+    public TaskStatus statusValue() {
+        return status == null ? null : TaskStatus.valueOf(status);
+    }
+}

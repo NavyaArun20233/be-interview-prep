@@ -1,6 +1,7 @@
 package com.interviewprep.common.config;
 
 import java.time.Clock;
+import java.time.ZoneId;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -8,8 +9,14 @@ import org.springframework.context.annotation.Configuration;
 @Configuration(proxyBeanMethods = false)
 public class ClockConfig {
 
+    /**
+     * Business time zone: decides what "today" is (e.g. for {@code @FutureOrPresent} due dates). Stored timestamps are
+     * {@code Instant}s and are unaffected by the zone.
+     */
+    static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Kolkata");
+
     @Bean
     Clock clock() {
-        return Clock.systemUTC();
+        return Clock.system(BUSINESS_ZONE);
     }
 }

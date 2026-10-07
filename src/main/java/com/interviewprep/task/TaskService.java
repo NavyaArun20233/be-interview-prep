@@ -32,7 +32,7 @@ public class TaskService {
 
     @Transactional
     public TaskResponse create(CreateTaskRequest request) {
-        TaskStatus status = Optional.ofNullable(request.status()).orElse(TaskStatus.TODO);
+        TaskStatus status = Optional.ofNullable(request.statusValue()).orElse(TaskStatus.TODO);
         Task task = new Task(request.title(), request.description(), status, request.dueDate(), now());
         Task saved = taskRepository.save(task);
         log.info("Created task {}", saved.getId());
@@ -55,7 +55,7 @@ public class TaskService {
     @Transactional
     public TaskResponse update(long id, UpdateTaskRequest request) {
         Task task = findTask(id);
-        task.update(request.title(), request.description(), request.status(), request.dueDate(), now());
+        task.update(request.title(), request.description(), request.statusValue(), request.dueDate(), now());
         // Flush so the optimistic-lock version is incremented and checked before we build the response.
         Task saved = taskRepository.saveAndFlush(task);
         log.info("Updated task {}", id);
