@@ -46,6 +46,17 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problem(ex, HttpStatus.NOT_FOUND, ex.getMessage(), request);
     }
 
+    @ExceptionHandler(ResourceGoneException.class)
+    ResponseEntity<Object> handleGone(ResourceGoneException ex, WebRequest request) {
+        return problem(ex, HttpStatus.GONE, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(FieldValidationException.class)
+    ResponseEntity<Object> handleFieldValidation(FieldValidationException ex, WebRequest request) {
+        FieldErrorResponse error = new FieldErrorResponse(ex.getField(), ex.getMessage());
+        return validationProblem(ex, List.of(error), new HttpHeaders(), request);
+    }
+
     @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
     ResponseEntity<Object> handleOptimisticLock(ObjectOptimisticLockingFailureException ex, WebRequest request) {
         log.warn("Concurrent modification detected: {}", ex.getMessage());

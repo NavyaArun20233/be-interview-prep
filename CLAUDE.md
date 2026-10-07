@@ -7,8 +7,8 @@ Human-oriented setup lives in [README.md](README.md); the review rubric lives in
 ## Repository status
 
 The repository contains a single Spring Boot service (base package `com.interviewprep`)
-with the Task API (`com.interviewprep.task`) plus this harness (instructions, CI, PR
-template, review guide). The stack is fixed:
+with the Task API (`com.interviewprep.task`) and the URL Shortener (`com.interviewprep.link`)
+plus this harness (instructions, CI, PR template, review guide). The stack is fixed:
 
 | Concern            | Choice                                                        |
 |--------------------|---------------------------------------------------------------|
@@ -218,7 +218,9 @@ committing locally, and the orchestrator/user handles push, PR and merge (steps 
    `git diff --cached`.
 10. **Push** — `git push -u origin <branch>`.
 11. **PR** — `gh pr create` using `.github/pull_request_template.md`, every section
-    filled in (write "None" rather than deleting).
+    filled in (write "None" rather than deleting). **Problem**, **Approach**,
+    **Decisions & Trade-offs** and **How to Test** are mandatory and must be specific.
+    Do not add tool attribution lines (e.g. "Generated with Claude Code") to PR descriptions.
 12. **Follow up** — `gh pr checks <n> --watch`; read review comments; fix, re-run step 7,
     push new commits (no force-push).
 13. **Merge** — only per "Merge rules" below.

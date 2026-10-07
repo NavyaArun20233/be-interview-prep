@@ -18,3 +18,8 @@ management:
     web:
       exposure:
         include: health,info
+
+app:
+  links:
+    # Public origin of short URLs (shortUrl = base-url + "/" + code).
+    base-url: ${APP_LINKS_BASE_URL:http://localhost:8080}
