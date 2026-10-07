@@ -2,7 +2,7 @@
 
 Java 21 / Spring Boot / PostgreSQL backend, built with Maven.
 
-> **Status:** Spring Boot 4.1 service with the Task API, the URL Shortener and JWT
+> **Status:** Spring Boot 4.1 service with the Task API, the URL Shortener, the Product Catalog and JWT
 > authentication with USER/ADMIN roles (below).
 > Standards for contributors and AI agents are in [CLAUDE.md](CLAUDE.md).
 
@@ -132,6 +132,45 @@ curl -i -X POST http://localhost:8080/api/v1/links \
 curl -i http://localhost:8080/<code>                 # 302, Location: https://example.com/some/long/path
 curl -s http://localhost:8080/api/v1/links/<code>/stats -H "Authorization: Bearer $TOKEN"
 ```
+
+## Product Catalog
+
+Base path `/api/v1/products`; reads need a bearer token (any role), `PUT`/`DELETE` need ADMIN.
+Flyway (`V4`) seeds 100 products on first startup.
+
+| Method   | Path                      | Description                                                         |
+|----------|---------------------------|---------------------------------------------------------------------|
+| `GET`    | `/api/v1/products`        | Paged list `{content, page, size, totalElements, totalPages}`       |
+| `GET`    | `/api/v1/products/{id}`   | One product (cached; `404` if unknown)                              |
+| `PUT`    | `/api/v1/products/{id}`   | Replace `{name, category, price, stock, rating}` (ADMIN) → `200`    |
+| `DELETE` | `/api/v1/products/{id}`   | Delete (ADMIN) → `204`                                              |
+
+- Filters (all optional, combined with AND): `category` (exact), `minPrice`/`maxPrice` (inclusive;
+  `minPrice > maxPrice` → `400`), `inStock=true` (stock > 0), `q` (case-insensitive name contains).
+- `sort=field[,asc|desc]` with field in `id, name, category, price, stock, rating, createdAt`
+  (default `id`; unknown field → `400`); `id` is always added as a tie-breaker.
+- `page` ≥ 0, `size` ≥ 1 (default 20); sizes above 100 are clamped to 100.
+
+```sh
+curl -s "http://localhost:8080/api/v1/products?category=BOOKS&minPrice=50&maxPrice=300&inStock=true&q=product&sort=price,desc&size=10" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Caching.** `GET /api/v1/products/{id}` is cached in an in-process Caffeine cache `products`
+(key = id, value = the immutable response DTO; max 1,000 entries, 10-minute TTL as a safety net).
+`PUT` replaces the entry and `DELETE` evicts it. The cache manager is transaction-aware, so the
+put/evict is applied only after the database transaction commits (a rolled-back update never
+reaches the cache). How to see it:
+
+- `ProductApiIT.repeatedLookupsHitTheCacheAndWritesNeverLeaveItStale` spies on the repository and
+  asserts two GETs cause one `findById`, and that GET after `PUT`/`DELETE` returns the new state/`404`.
+- With `logging.level.com.interviewprep.service.ProductService=DEBUG`, `Loading product {id} from
+  database` is logged only on a cache miss.
+- `GET /actuator/metrics/cache.gets?tag=result:hit` (and `result:miss`), with a bearer token.
+
+The cache is per instance: with several instances, a write evicts only the local entry and other
+instances may serve the old value for up to the TTL; a shared cache (e.g. Redis) or invalidation
+messages would be needed then.
 
 ## Development workflow
 

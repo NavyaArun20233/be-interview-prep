@@ -7,7 +7,7 @@ Human-oriented setup lives in [README.md](README.md); the review rubric lives in
 ## Repository status
 
 The repository contains a single Spring Boot service (base package `com.interviewprep`)
-with the Task API, the URL Shortener and JWT authentication (organized by layer: controller, service, repository, entity, dto, …)
+with the Task API, the URL Shortener, the Product Catalog and JWT authentication (organized by layer: controller, service, repository, entity, dto, …)
 plus this harness (instructions, CI, PR template, review guide). The stack is fixed:
 
 | Concern            | Choice                                                        |
@@ -50,16 +50,16 @@ classes to the matching layers, not a new top-level package:
 src/main/java/com/interviewprep/
   Application.java          # @SpringBootApplication entry point
   controller/               # REST controllers: HTTP only (mapping, validation, DTO <-> service)
-    TaskController, ShortLinkController, ShortLinkRedirectController, AuthController, UserController
+    TaskController, ShortLinkController, ShortLinkRedirectController, AuthController, UserController, ProductController
   service/                  # business logic, transaction boundaries
-    TaskService, ShortLinkService, ShortCodeGenerator, UserService, AuthService, TokenService, AdminBootstrapRunner
+    TaskService, ShortLinkService, ShortCodeGenerator, UserService, AuthService, TokenService, AdminBootstrapRunner, ProductService
   repository/               # Spring Data JPA interfaces
-    TaskRepository, ShortLinkRepository, UserRepository
+    TaskRepository, ShortLinkRepository, UserRepository, ProductRepository, ProductSpecifications
   entity/                   # JPA entities and their enums
-    Task, TaskStatus, ShortLink, User, Role
+    Task, TaskStatus, ShortLink, User, Role, Product
   dto/                      # request/response records; one sub-package per feature
     PageResponse            #   shared DTOs at the root
-    task/  link/  auth/
+    task/  link/  auth/  product/
   exception/                # GlobalExceptionHandler, base + feature exceptions
   config/                   # @Configuration and @ConfigurationProperties
   validation/               # custom Bean Validation constraints
