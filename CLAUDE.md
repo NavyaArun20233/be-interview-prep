@@ -7,7 +7,7 @@ Human-oriented setup lives in [README.md](README.md); the review rubric lives in
 ## Repository status
 
 The repository contains a single Spring Boot service (base package `com.interviewprep`)
-with the Task API and the URL Shortener (organized by layer: controller, service, repository, entity, dto, …)
+with the Task API, the URL Shortener and JWT authentication (organized by layer: controller, service, repository, entity, dto, …)
 plus this harness (instructions, CI, PR template, review guide). The stack is fixed:
 
 | Concern            | Choice                                                        |
@@ -50,16 +50,16 @@ classes to the matching layers, not a new top-level package:
 src/main/java/com/interviewprep/
   Application.java          # @SpringBootApplication entry point
   controller/               # REST controllers: HTTP only (mapping, validation, DTO <-> service)
-    TaskController, ShortLinkController, ShortLinkRedirectController
+    TaskController, ShortLinkController, ShortLinkRedirectController, AuthController, UserController
   service/                  # business logic, transaction boundaries
-    TaskService, ShortLinkService, ShortCodeGenerator
+    TaskService, ShortLinkService, ShortCodeGenerator, UserService, AuthService, TokenService, AdminBootstrapRunner
   repository/               # Spring Data JPA interfaces
-    TaskRepository, ShortLinkRepository
+    TaskRepository, ShortLinkRepository, UserRepository
   entity/                   # JPA entities and their enums
-    Task, TaskStatus, ShortLink
+    Task, TaskStatus, ShortLink, User, Role
   dto/                      # request/response records; one sub-package per feature
     PageResponse            #   shared DTOs at the root
-    task/  link/
+    task/  link/  auth/
   exception/                # GlobalExceptionHandler, base + feature exceptions
   config/                   # @Configuration and @ConfigurationProperties
   validation/               # custom Bean Validation constraints
@@ -148,9 +148,21 @@ Layer rules:
 
 ## Security
 
-No authentication is configured yet. When Spring Security is added: deny by default,
-authorize every endpoint explicitly, test both allowed and forbidden paths, and never
-weaken an existing rule as a side effect of another change.
+Stateless JWT bearer authentication (Spring Security OAuth2 Resource Server, HS256 tokens
+issued by `TokenService` on login, 15-minute expiry, roles `USER`/`ADMIN` in the `roles`
+claim). Rules live in `config.SecurityConfig` and are **deny by default**: only register,
+login, the short-link redirect, `/actuator/health` and `/error` are public; admin-only
+endpoints use `hasRole("ADMIN")` there, plus `@PreAuthorize` on the service method. 401/403
+are Problem Details (`exception.ProblemDetailsSecurityHandler`). The signing key comes only
+from `APP_SECURITY_JWT_SECRET`; tests get a random one from
+`src/test/resources/config/application.yml`.
+
+- New endpoints are authenticated automatically; make one public or role-restricted only
+  explicitly in `SecurityConfig`, and test both allowed and forbidden paths.
+- `@WebMvcTest`: `@Import(WebMvcSecurityTestConfiguration.class)` and authenticate with
+  `@WithMockUser` or `SecurityMockMvcRequestPostProcessors.jwt()`. ITs: send
+  `Authorization: Bearer` with a token from `TokenService` or a real register/login.
+- Never weaken an existing rule as a side effect of another change.
 
 ## Database standards
 
