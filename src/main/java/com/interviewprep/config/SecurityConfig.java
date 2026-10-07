@@ -18,7 +18,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Stateless bearer-token security, deny by default: every request needs a valid access token unless it is listed as
- * public below, and {@code /api/v1/users} additionally needs the ADMIN role. 401 and 403 are Problem Details JSON.
+ * public below; {@code /api/v1/users} and product writes (PUT/DELETE) additionally need the ADMIN role. 401 and 403 are Problem Details JSON.
  */
 @Configuration(proxyBeanMethods = false)
 @EnableWebSecurity
@@ -50,6 +50,10 @@ public class SecurityConfig {
                         .requestMatchers("/error")
                         .permitAll()
                         .requestMatchers("/api/v1/users")
+                        .hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/products/**")
+                        .hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/products/**")
                         .hasRole("ADMIN")
                         .anyRequest()
                         .authenticated())
