@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: be-interview-prep
+  datasource:
+    # Local defaults match the README's docker command; override via environment variables.
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/tdb}
+    username: ${SPRING_DATASOURCE_USERNAME:tdb}
+    password: ${SPRING_DATASOURCE_PASSWORD:tdb}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

@@ -6,19 +6,20 @@ Human-oriented setup lives in [README.md](README.md); the review rubric lives in
 
 ## Repository status
 
-The repository currently contains **no application code** — only this harness
-(instructions, CI, PR template, review guide). The target stack is fixed:
+The repository contains a single Spring Boot service (base package `com.interviewprep`)
+with the Task API (`com.interviewprep.task`) plus this harness (instructions, CI, PR
+template, review guide). The stack is fixed:
 
 | Concern            | Choice                                                        |
 |--------------------|---------------------------------------------------------------|
 | Language           | Java 21 (LTS)                                                  |
-| Framework          | Spring Boot (version pinned in `pom.xml` once created)        |
+| Framework          | Spring Boot 4.1 (pinned in `pom.xml`; Jackson 3, Testcontainers 2) |
 | Build              | Maven via the wrapper (`./mvnw`) — never rely on a global `mvn` |
 | Database           | PostgreSQL                                                     |
 | Migrations         | Flyway (`src/main/resources/db/migration`)                     |
 | Tests              | JUnit 5, AssertJ, Mockito, Spring Boot Test, Testcontainers    |
 | Formatting         | Spotless (`./mvnw spotless:apply` / `spotless:check`)          |
-| Hosting / CI       | GitHub (`NavyaArun20233/TDB-REPOSITORY`) / GitHub Actions      |
+| Hosting / CI       | GitHub (`NavyaArun20233/be-interview-prep`) / GitHub Actions      |
 
 **Before trusting anything in this file, check it against the repo.** If the code
 contradicts this document, the code wins — flag the discrepancy and update this file
