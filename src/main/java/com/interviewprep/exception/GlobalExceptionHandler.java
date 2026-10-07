@@ -57,6 +57,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problem(ex, HttpStatus.CONFLICT, ex.getMessage(), request);
     }
 
+    @ExceptionHandler(BusinessRuleViolationException.class)
+    ResponseEntity<Object> handleBusinessRule(BusinessRuleViolationException ex, WebRequest request) {
+        return problem(ex, HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), request);
+    }
+
     @ExceptionHandler(InvalidCredentialsException.class)
     ResponseEntity<Object> handleInvalidCredentials(InvalidCredentialsException ex, WebRequest request) {
         ProblemDetail body = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
@@ -109,8 +114,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             HandlerMethodValidationException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
         List<FieldErrorResponse> errors = ex.getParameterValidationResults().stream()
                 .flatMap(result -> result.getResolvableErrors().stream()
+                        // A @Valid body validated together with constrained parameters reports FieldErrors.
                         .map(error -> new FieldErrorResponse(
-                                result.getMethodParameter().getParameterName(), message(error))))
+                                error instanceof FieldError fieldError
+                                        ? fieldError.getField()
+                                        : result.getMethodParameter().getParameterName(),
+                                message(error))))
                 .toList();
         return validationProblem(ex, errors, headers, request);
     }

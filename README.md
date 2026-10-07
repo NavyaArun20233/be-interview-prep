@@ -2,8 +2,8 @@
 
 Java 21 / Spring Boot / PostgreSQL backend, built with Maven.
 
-> **Status:** Spring Boot 4.1 service with the Task API, the URL Shortener, the Product Catalog and JWT
-> authentication with USER/ADMIN roles (below).
+> **Status:** Spring Boot 4.1 service with the Task API, the URL Shortener, the Product Catalog, the Order
+> Service and JWT authentication with USER/ADMIN roles (below).
 > Standards for contributors and AI agents are in [CLAUDE.md](CLAUDE.md).
 
 ## Prerequisites
@@ -171,6 +171,48 @@ reaches the cache). How to see it:
 The cache is per instance: with several instances, a write evicts only the local entry and other
 instances may serve the old value for up to the TTL; a shared cache (e.g. Redis) or invalidation
 messages would be needed then.
+
+## Order Service
+
+Base path `/api/v1/orders`; every endpoint needs a bearer token. Orders reserve stock of the
+catalog products (Flyway `V5` adds `orders` and `order_items`).
+
+| Method | Path                           | Description                                                                 |
+|--------|--------------------------------|-----------------------------------------------------------------------------|
+| `POST` | `/api/v1/orders`               | Place `{items: [{productId, quantity}]}` (1-50 items, quantity 1-1000) → `201` + `Location` |
+| `GET`  | `/api/v1/orders/{id}`          | Owner or ADMIN; anyone else gets `404`                                      |
+| `POST` | `/api/v1/orders/{id}/cancel`   | Owner or ADMIN → `200`; returns the stock; repeating it changes nothing     |
+
+Response: `{id, status, items: [{productId, productName, quantity, unitPrice}], totalAmount, createdAt}`;
+`status` is `PLACED` or `CANCELLED`. Lines for the same product are merged.
+
+**Retries (`Idempotency-Key`).** `POST /api/v1/orders` requires an `Idempotency-Key` header
+(1-100 characters of `A-Z a-z 0-9 _ -`; missing or invalid → `400`). Generate one key per
+logical order (e.g. a UUID) and reuse it for every retry of that order. Keys are scoped to the
+user. A repeat with the same key and the same request (items compared after merging and sorting)
+returns the original order with `200` and `Idempotent-Replayed: true`, without reserving stock
+again; the same key with a different request → `422`. Simultaneous repeats wait for the first to
+finish and then get its order. A request that failed (e.g. `409`) leaves nothing behind, so
+retrying it with the same key is evaluated again.
+
+```sh
+curl -i -X POST http://localhost:8080/api/v1/orders   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json"   -H "Idempotency-Key: 6f1c2b9e-5d0a-4c1e-9a43-2a7d3e8b1f00"   -d '{"items": [{"productId": 1, "quantity": 2}, {"productId": 2, "quantity": 1}]}'
+```
+
+**No overselling.** An order is one transaction: each item is reserved with a single conditional
+statement, `UPDATE products SET stock = stock - :qty WHERE id = :id AND stock >= :qty`, in
+ascending product id (so concurrent orders cannot deadlock). PostgreSQL serializes concurrent
+updates of the same row and re-checks the condition, so stock never goes below zero (a
+`CHECK (stock >= 0)` constraint backs this up). If any item cannot be reserved the whole order is
+rolled back: unknown product → `404`; not enough stock → `409` with e.g. `Insufficient stock for
+product 7: requested 3, available 1`. Cached product entries are evicted after commit, so
+`GET /api/v1/products/{id}` shows the new stock. `OrderConcurrencyIT` fires 50 simultaneous orders
+at a product with stock 10: exactly 10 succeed and the stock ends at 0.
+
+**Cancel.** `POST /api/v1/orders/{id}/cancel` flips `PLACED` → `CANCELLED` in one conditional
+update and only then adds each item's quantity back to stock, so cancelling twice (or
+concurrently) restocks once. A product that appears in an order can no longer be deleted
+(`DELETE /api/v1/products/{id}` → `409`).
 
 ## Development workflow
 
