@@ -59,7 +59,7 @@ swallowed; log levels sensible; no sensitive data logged.
 **Tests** — New behavior covered at the right level (see CLAUDE.md testing table); bug
 fixes have a regression test; ITs use Testcontainers PostgreSQL; tests deterministic.
 
-**Architecture** — Layer rules respected; package-by-feature; constructor injection;
+**Architecture** — Layer rules respected; classes in the right layer package (see CLAUDE.md); constructor injection;
 DTOs at the API boundary; consistent with surrounding code.
 
 ## Self-review questions (before every push)

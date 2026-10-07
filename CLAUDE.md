@@ -7,7 +7,7 @@ Human-oriented setup lives in [README.md](README.md); the review rubric lives in
 ## Repository status
 
 The repository contains a single Spring Boot service (base package `com.interviewprep`)
-with the Task API (`com.interviewprep.task`) and the URL Shortener (`com.interviewprep.link`)
+with the Task API and the URL Shortener (organized by layer: controller, service, repository, entity, dto, …)
 plus this harness (instructions, CI, PR template, review guide). The stack is fixed:
 
 | Concern            | Choice                                                        |
@@ -42,25 +42,33 @@ The first PR that adds code must create a build that satisfies the CI contract
 
 ## Architecture
 
-Single-module Spring Boot service, package-by-feature under one base package
-(e.g. `com.<org>.<app>`):
+Single-module Spring Boot service, **package-by-layer** under `com.interviewprep`. Each
+layer package holds the classes of every feature (task, link, …); a new feature adds its
+classes to the matching layers, not a new top-level package:
 
 ```
-src/main/java/com/<org>/<app>/
-  Application.java              # @SpringBootApplication entry point
-  common/                       # cross-cutting: error handling, config, base types
-    error/GlobalExceptionHandler.java
-  <feature>/                    # one package per business capability, e.g. task/
-    TaskController.java         # HTTP only: mapping, validation, DTO <-> service call
-    TaskService.java            # business logic, transaction boundaries
-    TaskRepository.java         # Spring Data JPA interface
-    Task.java                   # JPA entity
-    dto/                        # request/response records
-    TaskNotFoundException.java  # feature-specific exceptions
+src/main/java/com/interviewprep/
+  Application.java          # @SpringBootApplication entry point
+  controller/               # REST controllers: HTTP only (mapping, validation, DTO <-> service)
+    TaskController, ShortLinkController, ShortLinkRedirectController
+  service/                  # business logic, transaction boundaries
+    TaskService, ShortLinkService, ShortCodeGenerator
+  repository/               # Spring Data JPA interfaces
+    TaskRepository, ShortLinkRepository
+  entity/                   # JPA entities and their enums
+    Task, TaskStatus, ShortLink
+  dto/                      # request/response records; one sub-package per feature
+    PageResponse            #   shared DTOs at the root
+    task/  link/
+  exception/                # GlobalExceptionHandler, base + feature exceptions
+  config/                   # @Configuration and @ConfigurationProperties
+  validation/               # custom Bean Validation constraints
 src/main/resources/
-  application.yml               # defaults; secrets only via env vars
+  application.yml           # defaults; secrets only via env vars
   db/migration/V<n>__<desc>.sql # Flyway
-src/test/java/...               # mirrors main; *Test = unit/slice, *IT = integration
+src/test/java/com/interviewprep/
+  controller/  service/  config/  validation/   # *Test = unit / @WebMvcTest slice, same package as the class
+  integration/                                  # *IT = full app + Testcontainers PostgreSQL
 ```
 
 Layer rules:
@@ -71,8 +79,11 @@ Layer rules:
   never `ResponseEntity` or anything HTTP-specific.
 - **Repository** → data access only. No business logic.
 - **Entity** → persistence model. Never serialized directly to API clients.
-- Dependencies flow inward: controller → service → repository. Features may call another
-  feature's **service**, never its repository.
+- Dependencies flow inward: controller → service → repository. Code for one feature may
+  call another feature's **service**, never its repository.
+- `exception`, `config`, `validation` and shared `dto` classes must not depend on
+  `controller`/`service`; generic bases (e.g. `ResourceNotFoundException`) are extended by
+  feature exceptions (`TaskNotFoundException`).
 
 ## Coding standards
 
