@@ -7,8 +7,8 @@ Human-oriented setup lives in [README.md](README.md); the review rubric lives in
 ## Repository status
 
 The repository contains a single Spring Boot service (base package `com.interviewprep`)
-with the Task API (`com.interviewprep.task`) plus this harness (instructions, CI, PR
-template, review guide). The stack is fixed:
+with the Task API (`com.interviewprep.task`) and the URL Shortener (`com.interviewprep.link`)
+plus this harness (instructions, CI, PR template, review guide). The stack is fixed:
 
 | Concern            | Choice                                                        |
 |--------------------|---------------------------------------------------------------|
