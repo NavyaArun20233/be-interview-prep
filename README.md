@@ -2,9 +2,8 @@
 
 Java 21 / Spring Boot / PostgreSQL backend, built with Maven.
 
-> **Status:** the development harness (standards, CI, PR template, review guide) is in
-> place; application code has not been added yet. The first code PR must follow the
-> bootstrap requirements in [CLAUDE.md](CLAUDE.md#bootstrapping-the-project-first-code-pr-only).
+> **Status:** Spring Boot 4.1 service with the Task API (below). Standards for contributors
+> and AI agents are in [CLAUDE.md](CLAUDE.md).
 
 ## Prerequisites
 
@@ -18,7 +17,7 @@ Java 21 / Spring Boot / PostgreSQL backend, built with Maven.
 | Purpose                       | Command                     |
 |-------------------------------|-----------------------------|
 | Format                        | `./mvnw spotless:apply`      |
-| Unit tests                    | `./mvnw test`                |
+| Unit + slice tests            | `./mvnw test`                |
 | Full verification (as CI)     | `./mvnw -B -ntp verify`      |
 | Run locally                   | `./mvnw spring-boot:run`     |
 
@@ -32,6 +31,29 @@ docker run --rm -d --name tdb-postgres -p 5432:5432 \
 Connection settings are supplied via environment variables
 (`SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`) —
 never commit credentials.
+
+## Task API
+
+Base path `/api/v1/tasks`. Errors use RFC 9457 Problem Details (`application/problem+json`);
+validation failures add an `errors: [{field, message}]` array.
+
+| Method   | Path                  | Description                                                    |
+|----------|-----------------------|----------------------------------------------------------------|
+| `POST`   | `/api/v1/tasks`       | Create a task → `201` + `Location`                            |
+| `GET`    | `/api/v1/tasks`       | List tasks, newest first (`?status=TODO\|IN_PROGRESS\|DONE`, `page`, `size` ≤ 100) |
+| `GET`    | `/api/v1/tasks/{id}`  | Get one task (`404` if unknown)                                |
+| `PUT`    | `/api/v1/tasks/{id}`  | Replace a task (`title` and `status` required)                 |
+| `DELETE` | `/api/v1/tasks/{id}`  | Delete a task → `204`                                          |
+
+Fields: `title` (required, ≤ 100 chars), `description` (≤ 1000 chars), `status`
+(defaults to `TODO` on create), `dueDate` (`yyyy-MM-dd`, today or later); `id`,
+`createdAt` and `updatedAt` are set by the server.
+
+```sh
+curl -i -X POST http://localhost:8080/api/v1/tasks \
+  -H 'Content-Type: application/json' \
+  -d '{"title": "Prepare for interview", "dueDate": "2030-01-31"}'
+```
 
 ## Development workflow
 
