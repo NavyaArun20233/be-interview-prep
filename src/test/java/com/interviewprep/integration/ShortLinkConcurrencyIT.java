@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.interviewprep.TestcontainersConfiguration;
 import com.interviewprep.dto.link.ShortLinkResponse;
 import com.interviewprep.dto.link.ShortLinkStatsResponse;
+import com.interviewprep.service.TokenService;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -38,12 +39,15 @@ class ShortLinkConcurrencyIT {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private TokenService tokenService;
+
     private RestTestClient client;
 
     @BeforeEach
     void setUp() {
         jdbcTemplate.update("DELETE FROM short_links");
-        client = ShortLinkApiIT.noRedirectClient(port);
+        client = ShortLinkApiIT.noRedirectClient(port, ShortLinkApiIT.userToken(tokenService));
     }
 
     @Test

@@ -2,7 +2,8 @@
 
 Java 21 / Spring Boot / PostgreSQL backend, built with Maven.
 
-> **Status:** Spring Boot 4.1 service with the Task API and the URL Shortener (below).
+> **Status:** Spring Boot 4.1 service with the Task API, the URL Shortener and JWT
+> authentication with USER/ADMIN roles (below).
 > Standards for contributors and AI agents are in [CLAUDE.md](CLAUDE.md).
 
 ## Prerequisites
@@ -32,9 +33,51 @@ Connection settings are supplied via environment variables
 (`SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`) —
 never commit credentials.
 
+The app also **requires** a token-signing secret and refuses to start without one (see
+[Authentication](#authentication)):
+
+```sh
+export APP_SECURITY_JWT_SECRET="$(openssl rand -base64 48)"
+./mvnw spring-boot:run
+```
+
+## Authentication
+
+Every endpoint requires `Authorization: Bearer <accessToken>` except registration, login, the
+short-link redirect `GET /{code}` and `GET /actuator/health`. Tokens are stateless, HS256-signed
+JWTs (no server-side session) that **expire 15 minutes** after login; there are no refresh
+tokens — log in again for a new one.
+
+| Method | Path                     | Access        | Description                                                     |
+|--------|--------------------------|---------------|-----------------------------------------------------------------|
+| `POST` | `/api/v1/auth/register`  | public        | `{email, password}` → `201` + profile `{id, email, role, createdAt}`, `Location: /api/v1/users/me`; `409` if the email exists |
+| `POST` | `/api/v1/auth/login`     | public        | `{email, password}` → `200` `{accessToken, tokenType: "Bearer", expiresIn: 900, expiresAt}`; `401` "Invalid email or password" |
+| `GET`  | `/api/v1/users/me`       | any logged-in | Own profile                                                      |
+| `GET`  | `/api/v1/users`          | ADMIN         | All profiles, paginated (`page`, `size` ≤ 100)                   |
+
+- Roles: `USER` and `ADMIN`. Self-registration always creates a `USER` (a `role` in the body is
+  ignored). No token or an invalid/expired token → `401`; a valid token without the required
+  role → `403`. Both are Problem Details JSON (`application/problem+json`), never HTML.
+- Emails are trimmed and case-insensitive. Passwords: 8–72 characters and at most 72 bytes in
+  UTF-8 (bcrypt's limit); stored only as a bcrypt hash and never returned or logged.
+- Configuration (environment variables; nothing secret is committed):
+
+  | Variable                       | Required | Meaning |
+  |--------------------------------|----------|---------|
+  | `APP_SECURITY_JWT_SECRET`      | yes      | HMAC signing key, at least 32 bytes. Generate with `openssl rand -base64 48`. Rotating it invalidates all issued tokens. |
+  | `APP_SECURITY_ADMIN_EMAIL`     | no       | With the password below, creates this ADMIN at startup if no account with that email exists (idempotent). |
+  | `APP_SECURITY_ADMIN_PASSWORD`  | no       | Password for that admin (same rules as above). Set both or neither. |
+
+```sh
+curl -i -X POST http://localhost:8080/api/v1/auth/register   -H 'Content-Type: application/json'   -d '{"email": "ada@example.com", "password": "correct horse battery"}'
+TOKEN=$(curl -s -X POST http://localhost:8080/api/v1/auth/login   -H 'Content-Type: application/json'   -d '{"email": "ada@example.com", "password": "correct horse battery"}' | jq -r .accessToken)
+curl -s http://localhost:8080/api/v1/users/me -H "Authorization: Bearer $TOKEN"
+curl -i http://localhost:8080/api/v1/users -H "Authorization: Bearer $TOKEN"   # 403 for a USER
+```
+
 ## Task API
 
-Base path `/api/v1/tasks`. Errors use RFC 9457 Problem Details (`application/problem+json`);
+Base path `/api/v1/tasks`; requires a bearer token (any role). Errors use RFC 9457 Problem Details (`application/problem+json`);
 validation failures add an `errors: [{field, message}]` array.
 
 | Method   | Path                  | Description                                                    |
@@ -56,6 +99,8 @@ curl -i -X POST http://localhost:8080/api/v1/tasks \
 ```
 
 ## URL Shortener
+
+Creating links and reading stats require a bearer token (any role); the redirect `GET /{code}` is public.
 
 | Method | Path                             | Description                                                                 |
 |--------|----------------------------------|-----------------------------------------------------------------------------|
@@ -85,7 +130,7 @@ curl -i -X POST http://localhost:8080/api/v1/links \
   -H 'Content-Type: application/json' \
   -d '{"url": "https://example.com/some/long/path", "expiresAt": "2030-12-31T23:59:59+05:30"}'
 curl -i http://localhost:8080/<code>                 # 302, Location: https://example.com/some/long/path
-curl -s http://localhost:8080/api/v1/links/<code>/stats
+curl -s http://localhost:8080/api/v1/links/<code>/stats -H "Authorization: Bearer $TOKEN"
 ```
 
 ## Development workflow

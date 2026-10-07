@@ -4,8 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.interviewprep.TestcontainersConfiguration;
 import com.interviewprep.dto.task.TaskResponse;
+import com.interviewprep.entity.Role;
 import com.interviewprep.entity.TaskStatus;
 import com.interviewprep.repository.TaskRepository;
+import com.interviewprep.service.TokenService;
 import java.time.Clock;
 import java.time.LocalDate;
 import org.flywaydb.core.Flyway;
@@ -15,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.client.RestTestClient;
 
@@ -35,13 +38,19 @@ class TaskApiIT {
     @Autowired
     private Clock clock;
 
+    @Autowired
+    private TokenService tokenService;
+
     private RestTestClient client;
 
     @BeforeEach
     void setUp() {
         taskRepository.deleteAll();
+        // The Task API needs a token of any role; it does not look the user up, so no account is required.
+        String token = tokenService.issue(1L, "task-it@example.com", Role.USER).accessToken();
         client = RestTestClient.bindToServer()
                 .baseUrl("http://localhost:" + port)
+                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                 .build();
     }
 

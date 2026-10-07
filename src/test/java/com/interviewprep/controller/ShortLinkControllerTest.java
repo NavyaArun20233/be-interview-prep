@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.interviewprep.WebMvcSecurityTestConfiguration;
 import com.interviewprep.config.ValidationConfig;
 import com.interviewprep.dto.link.CreateShortLinkRequest;
 import com.interviewprep.dto.link.ShortLinkResponse;
@@ -32,11 +33,14 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithAnonymousUser;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest({ShortLinkController.class, ShortLinkRedirectController.class})
-@Import({ValidationConfig.class, ShortLinkControllerTest.FixedClockConfig.class})
+@Import({ValidationConfig.class, WebMvcSecurityTestConfiguration.class, ShortLinkControllerTest.FixedClockConfig.class})
+@WithMockUser
 class ShortLinkControllerTest {
 
     private static final Instant NOW = Instant.parse("2026-01-15T10:00:00Z");
@@ -249,5 +253,28 @@ class ShortLinkControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.detail").value("Short link nope123 not found"));
+    }
+
+    @Test
+    @WithAnonymousUser
+    void redirectIsPublic() throws Exception {
+        when(shortLinkService.visit("abc1234")).thenReturn(URL);
+
+        mockMvc.perform(get("/abc1234")).andExpect(status().isFound()).andExpect(header().string("Location", URL));
+    }
+
+    @Test
+    @WithAnonymousUser
+    void createAndStatsRequireAuthentication() throws Exception {
+        mockMvc.perform(post("/api/v1/links")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"url\": \"" + URL + "\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON));
+        mockMvc.perform(get("/api/v1/links/abc1234/stats"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON));
+
+        verifyNoInteractions(shortLinkService);
     }
 }

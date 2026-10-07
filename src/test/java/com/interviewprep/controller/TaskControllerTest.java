@@ -3,6 +3,7 @@ package com.interviewprep.controller;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.startsWith;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -17,6 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.interviewprep.WebMvcSecurityTestConfiguration;
 import com.interviewprep.config.ValidationConfig;
 import com.interviewprep.dto.PageResponse;
 import com.interviewprep.dto.task.CreateTaskRequest;
@@ -38,11 +40,14 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithAnonymousUser;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(TaskController.class)
-@Import({ValidationConfig.class, TaskControllerTest.FixedClockConfig.class})
+@Import({ValidationConfig.class, WebMvcSecurityTestConfiguration.class, TaskControllerTest.FixedClockConfig.class})
+@WithMockUser
 class TaskControllerTest {
 
     private static final Instant NOW = Instant.parse("2026-01-15T10:00:00Z");
@@ -330,5 +335,19 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.status").value(500))
                 .andExpect(jsonPath("$.detail").value("An unexpected error occurred"))
                 .andExpect(content().string(not(containsString("db-host"))));
+    }
+
+    @Test
+    @WithAnonymousUser
+    void requestWithoutTokenReturns401ProblemDetail() throws Exception {
+        mockMvc.perform(get("/api/v1/tasks"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().string("WWW-Authenticate", startsWith("Bearer")))
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.detail").value("Authentication is required to access this resource"))
+                .andExpect(jsonPath("$.instance").value("/api/v1/tasks"));
+
+        verifyNoInteractions(taskService);
     }
 }

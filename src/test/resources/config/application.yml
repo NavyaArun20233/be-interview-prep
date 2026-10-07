@@ -1,0 +1,7 @@
+# Test-only overrides, layered on top of src/main/resources/application.yml (Spring Boot also
+# loads classpath:/config/application.yml). Never put a literal secret here.
+app:
+  security:
+    jwt:
+      # Fresh random 64-hex-character (256-bit) signing key for each test application context.
+      secret: ${random.value}${random.value}

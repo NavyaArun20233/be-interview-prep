@@ -23,3 +23,11 @@ app:
   links:
     # Public origin of short URLs (shortUrl = base-url + "/" + code).
     base-url: ${APP_LINKS_BASE_URL:http://localhost:8080}
+  security:
+    jwt:
+      # secret: REQUIRED, no default. HMAC-SHA256 key of at least 32 bytes, supplied via the
+      # APP_SECURITY_JWT_SECRET environment variable (generate with: openssl rand -base64 48).
+      # Access-token lifetime.
+      ttl: PT15M
+    # admin: optional first ADMIN account, created at startup if absent. Supply both via
+    # APP_SECURITY_ADMIN_EMAIL and APP_SECURITY_ADMIN_PASSWORD; never commit values.
