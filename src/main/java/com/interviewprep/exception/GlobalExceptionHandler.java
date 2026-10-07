@@ -16,6 +16,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -49,6 +50,28 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(ResourceGoneException.class)
     ResponseEntity<Object> handleGone(ResourceGoneException ex, WebRequest request) {
         return problem(ex, HttpStatus.GONE, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(ResourceConflictException.class)
+    ResponseEntity<Object> handleConflict(ResourceConflictException ex, WebRequest request) {
+        return problem(ex, HttpStatus.CONFLICT, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    ResponseEntity<Object> handleInvalidCredentials(InvalidCredentialsException ex, WebRequest request) {
+        ProblemDetail body = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
+        return handleExceptionInternal(ex, body, headers, HttpStatus.UNAUTHORIZED, request);
+    }
+
+    /**
+     * Method security ({@code @PreAuthorize}) denials raised inside a controller or service. Without this they would
+     * fall through to the generic 500 handler below.
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    ResponseEntity<Object> handleAccessDenied(AccessDeniedException ex, WebRequest request) {
+        return problem(ex, HttpStatus.FORBIDDEN, ProblemDetailsSecurityHandler.ACCESS_DENIED, request);
     }
 
     @ExceptionHandler(FieldValidationException.class)

@@ -6,7 +6,9 @@ import static org.mockito.Mockito.doReturn;
 import com.interviewprep.TestcontainersConfiguration;
 import com.interviewprep.dto.link.ShortLinkResponse;
 import com.interviewprep.dto.link.ShortLinkStatsResponse;
+import com.interviewprep.entity.Role;
 import com.interviewprep.service.ShortCodeGenerator;
+import com.interviewprep.service.TokenService;
 import java.net.http.HttpClient;
 import java.time.Clock;
 import java.time.Instant;
@@ -20,6 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -48,15 +51,18 @@ class ShortLinkApiIT {
     @MockitoSpyBean
     private ShortCodeGenerator codeGenerator;
 
+    @Autowired
+    private TokenService tokenService;
+
     private RestTestClient client;
 
     @BeforeEach
     void setUp() {
         jdbcTemplate.update("DELETE FROM short_links");
-        client = noRedirectClient(port);
+        client = noRedirectClient(port, userToken(tokenService));
     }
 
-    /** Redirects must be observed, not followed. */
+    /** Redirects must be observed, not followed. Sends no token. */
     static RestTestClient noRedirectClient(int port) {
         HttpClient httpClient = HttpClient.newBuilder()
                 .followRedirects(HttpClient.Redirect.NEVER)
@@ -64,6 +70,19 @@ class ShortLinkApiIT {
         return RestTestClient.bindToServer(new JdkClientHttpRequestFactory(httpClient))
                 .baseUrl("http://localhost:" + port)
                 .build();
+    }
+
+    /** Same, authenticated with {@code accessToken} on every request. */
+    static RestTestClient noRedirectClient(int port, String accessToken) {
+        return noRedirectClient(port)
+                .mutate()
+                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                .build();
+    }
+
+    /** The link API needs a token of any role; it does not look the user up, so no account is required. */
+    static String userToken(TokenService tokenService) {
+        return tokenService.issue(1L, "link-it@example.com", Role.USER).accessToken();
     }
 
     @Test
