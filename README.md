@@ -1,4 +1,4 @@
-# TDB-REPOSITORY
+# be-interview-prep
 
 Java 21 / Spring Boot / PostgreSQL backend, built with Maven.
 

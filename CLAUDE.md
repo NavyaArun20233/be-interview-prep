@@ -18,7 +18,7 @@ The repository currently contains **no application code** — only this harness
 | Migrations         | Flyway (`src/main/resources/db/migration`)                     |
 | Tests              | JUnit 5, AssertJ, Mockito, Spring Boot Test, Testcontainers    |
 | Formatting         | Spotless (`./mvnw spotless:apply` / `spotless:check`)          |
-| Hosting / CI       | GitHub (`NavyaArun20233/TDB-REPOSITORY`) / GitHub Actions      |
+| Hosting / CI       | GitHub (`NavyaArun20233/be-interview-prep`) / GitHub Actions      |
 
 **Before trusting anything in this file, check it against the repo.** If the code
 contradicts this document, the code wins — flag the discrepancy and update this file
